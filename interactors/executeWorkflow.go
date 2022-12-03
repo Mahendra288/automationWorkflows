@@ -30,15 +30,25 @@ func (interactor ExecuteWorkflowInteractor) ExecuteWorkflow(reqDetails WorkflowE
 	if err != nil {
 		return err
 	}
-	initialExecLog, err := interactor.createInitialWorkflowExecLog(latestExecConfigId, reqDetails)
+	initialExecLog, logInteractor, err := interactor.createInitialWorkflowExecLog(latestExecConfigId, reqDetails)
 	if err != nil {
 		return err
 	}
 
-	_, err = interactor.executeWorkflowNodes(latestExecConfigId, reqDetails, initialExecLog)
+	execFailedNodeIds, err := interactor.executeWorkflowNodes(latestExecConfigId, reqDetails, initialExecLog)
 	if err != nil {
+		logInteractor.updateFailedStatusForExecLog(initialExecLog.ExecLogId, err)
 		return err
 	}
+
+	hasAnyNodesFailed := len(execFailedNodeIds) > 0
+	if hasAnyNodesFailed {
+		traceback := map[string][]string{"failed_node_ids": execFailedNodeIds}
+		logInteractor.updatePartiallyFailedStatusForExecLog(initialExecLog.ExecLogId, traceback)
+	} else {
+		logInteractor.updateSuccessStatusForExecLog(initialExecLog.ExecLogId)
+	}
+
 	return nil
 }
 
@@ -67,6 +77,7 @@ func (interactor ExecuteWorkflowInteractor) executeWorkflowNodes(
 	initialExecLog InitialWorkflowExecLogStruct,
 ) ([]string, error) {
 	var execFailedNodeIds []string
+
 	leadDetails, leadId, err := interactor.getLatestLeadDetails(
 		reqDetails.TriggerEventDetails.EventEntity,
 		reqDetails.TriggerEventDetails.EventEntityId,
@@ -74,6 +85,12 @@ func (interactor ExecuteWorkflowInteractor) executeWorkflowNodes(
 	if err != nil {
 		return execFailedNodeIds, err
 	}
+
+	leadDetails = interactor.mergePayloadWithLeadDetailsForLeadTrigger(
+		reqDetails.TriggerEventDetails.EventEntity,
+		reqDetails.TriggerEventDetails.Payload,
+		leadDetails)
+
 	err = interactor.executeNode(leadDetails, leadId)
 	if err != nil {
 		return execFailedNodeIds, err
@@ -82,7 +99,7 @@ func (interactor ExecuteWorkflowInteractor) executeWorkflowNodes(
 }
 
 func (interactor ExecuteWorkflowInteractor) getLatestLeadDetails(
-	entityType string, entityId string) (leadDetails map[string]string, leadId string, err error) {
+	entityType string, entityId string) (leadDetails map[string]any, leadId string, err error) {
 	if entityType == enums.TriggerEventEntityEnum().Lead {
 		leadId = entityId
 	} else if entityType == enums.TriggerEventEntityEnum().Activity {
@@ -100,12 +117,14 @@ func (interactor ExecuteWorkflowInteractor) getLatestLeadDetails(
 }
 
 func (interactor ExecuteWorkflowInteractor) executeNode(
-	leadDetails map[string]string, leadId string) error {
+	leadDetails map[string]any, leadId string) error {
 	return nil
 }
 
 func (interactor ExecuteWorkflowInteractor) createInitialWorkflowExecLog(
-	latestExecConfigId string, reqDetails WorkflowExecReqStruct) (InitialWorkflowExecLogStruct, error) {
+	latestExecConfigId string, reqDetails WorkflowExecReqStruct) (
+	InitialWorkflowExecLogStruct, WorkflowExecLogInteractor, error,
+) {
 
 	reqDetailsMap, _ := json.Marshal(reqDetails)
 	logInteractor := WorkflowExecLogInteractor{}
@@ -120,7 +139,21 @@ func (interactor ExecuteWorkflowInteractor) createInitialWorkflowExecLog(
 	}
 	err := logInteractor.CreateInitialWorkflowExecLog(initialLog)
 	if err != nil {
-		return InitialWorkflowExecLogStruct{}, err
+		return InitialWorkflowExecLogStruct{}, logInteractor, err
 	}
-	return initialLog, err
+	return initialLog, logInteractor, err
+}
+
+func (interactor ExecuteWorkflowInteractor) mergePayloadWithLeadDetailsForLeadTrigger(
+	triggerEventEntity string,
+	triggerEventPayload map[string]any,
+	leadDetails map[string]any) map[string]any {
+	isLeadTrigger := triggerEventEntity == enums.TriggerEventEntityEnum().Lead
+	if !isLeadTrigger {
+		return leadDetails
+	}
+	for leadFieldId, response := range triggerEventPayload {
+		leadDetails[leadFieldId] = response
+	}
+	return leadDetails
 }
