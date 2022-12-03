@@ -27,16 +27,12 @@ func (o *executeWorkflowStorageInterfacesMock) GetLatestPublishedWorkflowExecCon
 
 func (testInteractor TestExecuteWorkflowInteractor) TestAlreadyWorkflowExecutionConfigDone(t *testing.T) {
 	// Arrange
-	execReqUniqueId := "12341"
-	reqDetails := interactors.WorkflowExecReqStruct{
-		"1", "Source1", enums.WorkFlowSourceTypeEnum().IbEvents,
-		execReqUniqueId, interactors.triggerEventDetailsStruct{}}
-	expectedResponse := accessTokenDetails.UserId
+	reqDetails := interactors.WorkflowExecReqStruct{}
 
 	// Mocking storage method
 	StorageInterfaceMockObj := new(executeWorkflowStorageInterfacesMock)
 	StorageInterfaceMockObj.On(
-		"GetWorkflowExecStatusFromRequestId", execReqUniqueId,
+		"GetWorkflowExecStatusFromRequestId", reqDetails,
 	).Return(enums.WorkFlowExecLogStatusEnum().Created, nil)
 
 	interactor := interactors.ExecuteWorkflowInteractor{
@@ -44,7 +40,7 @@ func (testInteractor TestExecuteWorkflowInteractor) TestAlreadyWorkflowExecution
 	}
 
 	// Act
-	response, err = interactor.ExecuteWorkflow(reqDetails)
+	err := interactor.ExecuteWorkflow(reqDetails)
 
 	// Assert
 	assert.Equal(t, expectedResponse, response)
