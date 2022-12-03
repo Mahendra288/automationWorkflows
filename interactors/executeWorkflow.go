@@ -38,7 +38,7 @@ func (interactor ExecuteWorkflowInteractor) validateForPrevExecution(execReqUniq
 	if err != nil {
 		return err
 	}
-	if execLogStatus == (enums.WorkFlowExecLogStatus{}) {
+	if execLogStatus != (enums.WorkFlowExecLogStatus{}) {
 		return &customErrors.AlreadyExecutedWorkflowError{}
 	}
 	return nil
