@@ -22,3 +22,4 @@ bin/
 .serverless/
 /env_*.sh
 /set_env_vars.py
+go.sum

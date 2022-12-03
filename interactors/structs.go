@@ -5,7 +5,7 @@ import "automationWorkflows/enums"
 type TriggerEventDetailsStruct struct {
 	EventEntity   string
 	EventEntityId string
-	Payload       map[string]string
+	Payload       map[string]any
 }
 type WorkflowExecReqStruct struct {
 	WorkflowId              string
