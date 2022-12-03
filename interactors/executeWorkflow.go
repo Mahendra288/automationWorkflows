@@ -12,7 +12,7 @@ import (
 
 // todo: naming style, whether to keep interfaces as suffix or not
 type executeWorkflowStorageInterfaces interface {
-	GetWorkflowExecStatusFromRequestId(execReqUniqueId string) (enums.WorkFlowExecLogStatus, error)
+	GetWorkflowExecStatusFromRequestId(execReqUniqueId string) (string, error)
 	GetLatestPublishedWorkflowExecConfigId(workflowId string) (string, error)
 }
 
@@ -57,7 +57,7 @@ func (interactor ExecuteWorkflowInteractor) validateForPrevExecution(execReqUniq
 	if err != nil {
 		return err
 	}
-	if execLogStatus != (enums.WorkFlowExecLogStatus{}) {
+	if execLogStatus != "" {
 		return &customErrors.AlreadyExecutedWorkflowError{}
 	}
 	return nil
