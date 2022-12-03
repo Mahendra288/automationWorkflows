@@ -1,6 +1,10 @@
 package interactors
 
 import (
+	"encoding/json"
+	"github.com/google/uuid"
+)
+import (
 	"automationWorkflows/adapters"
 	"automationWorkflows/customErrors"
 	"automationWorkflows/enums"
@@ -17,16 +21,21 @@ type ExecuteWorkflowInteractor struct {
 }
 
 func (interactor ExecuteWorkflowInteractor) ExecuteWorkflow(reqDetails WorkflowExecReqStruct) error {
-	err := interactor.validateForPrevExecution(reqDetails.workflowExecReqUniqueId)
+	err := interactor.validateForPrevExecution(reqDetails.WorkflowExecReqUniqueId)
 	if err != nil {
 		return err
 	}
 
-	latestExecConfigId, err := interactor.getLatestPublishedWorkflowExecConfigId(reqDetails.workflowId)
+	latestExecConfigId, err := interactor.getLatestPublishedWorkflowExecConfigId(reqDetails.WorkflowId)
 	if err != nil {
 		return err
 	}
-	_, err = interactor.executeWorkflowNodes(latestExecConfigId, reqDetails)
+	initialExecLog, err := interactor.createInitialWorkflowExecLog(latestExecConfigId, reqDetails)
+	if err != nil {
+		return err
+	}
+
+	_, err = interactor.executeWorkflowNodes(latestExecConfigId, reqDetails, initialExecLog)
 	if err != nil {
 		return err
 	}
@@ -53,12 +62,14 @@ func (interactor ExecuteWorkflowInteractor) getLatestPublishedWorkflowExecConfig
 }
 
 func (interactor ExecuteWorkflowInteractor) executeWorkflowNodes(
-	latestExecConfigId string, reqDetails WorkflowExecReqStruct,
+	latestExecConfigId string,
+	reqDetails WorkflowExecReqStruct,
+	initialExecLog InitialWorkflowExecLogStruct,
 ) ([]string, error) {
 	var execFailedNodeIds []string
 	leadDetails, leadId, err := interactor.getLatestLeadDetails(
-		reqDetails.triggerEventDetails.eventEntity,
-		reqDetails.triggerEventDetails.eventEntityId,
+		reqDetails.TriggerEventDetails.EventEntity,
+		reqDetails.TriggerEventDetails.EventEntityId,
 	)
 	if err != nil {
 		return execFailedNodeIds, err
@@ -91,4 +102,25 @@ func (interactor ExecuteWorkflowInteractor) getLatestLeadDetails(
 func (interactor ExecuteWorkflowInteractor) executeNode(
 	leadDetails map[string]string, leadId string) error {
 	return nil
+}
+
+func (interactor ExecuteWorkflowInteractor) createInitialWorkflowExecLog(
+	latestExecConfigId string, reqDetails WorkflowExecReqStruct) (InitialWorkflowExecLogStruct, error) {
+
+	reqDetailsMap, _ := json.Marshal(reqDetails)
+	logInteractor := WorkflowExecLogInteractor{}
+
+	initialLog := InitialWorkflowExecLogStruct{
+		ExecLogId:     uuid.NewString(),
+		ExecRequestId: reqDetails.WorkflowExecReqUniqueId,
+		SourceId:      reqDetails.SourceId,
+		SourceType:    reqDetails.SourceType,
+		ExecConfigId:  latestExecConfigId,
+		Payload:       string(reqDetailsMap),
+	}
+	err := logInteractor.CreateInitialWorkflowExecLog(initialLog)
+	if err != nil {
+		return InitialWorkflowExecLogStruct{}, err
+	}
+	return initialLog, err
 }

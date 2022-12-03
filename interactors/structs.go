@@ -3,14 +3,23 @@ package interactors
 import "automationWorkflows/enums"
 
 type TriggerEventDetailsStruct struct {
-	eventEntity   string
-	eventEntityId string
-	payload       map[string]any
+	EventEntity   string
+	EventEntityId string
+	Payload       map[string]any
 }
 type WorkflowExecReqStruct struct {
-	workflowId              string
-	sourceId                string
-	sourceType              enums.WorkFlowSourceType
-	workflowExecReqUniqueId string
-	triggerEventDetails     TriggerEventDetailsStruct
+	WorkflowId              string
+	SourceId                string
+	SourceType              enums.WorkFlowSourceType
+	WorkflowExecReqUniqueId string
+	TriggerEventDetails     TriggerEventDetailsStruct
+}
+
+type InitialWorkflowExecLogStruct struct {
+	ExecLogId     string
+	ExecRequestId string
+	SourceId      string
+	SourceType    enums.WorkFlowSourceType
+	ExecConfigId  string
+	Payload       string
 }
