@@ -45,7 +45,9 @@ func TestAlreadyWorkflowExecutionConfigIsInProgress(t *testing.T) {
 	err := interactor.ExecuteWorkflow(reqDetails)
 
 	// Assert
-	assert.Equal(t, &customErrors.AlreadyExecutedWorkflowError{}, err)
+	if assert.Error(t, err) { // checking is error object or not
+		assert.Equal(t, &customErrors.AlreadyExecutedWorkflowError{}, err)
+	}
 }
 
 func TestValidDetailsExecutesWorkflow(t *testing.T) {
